@@ -2,7 +2,7 @@
 ##setup command=wget -q "--no-check-certificate" https://raw.githubusercontent.com/ciefp/CiefpsettingsMotor/main/installer.sh -O - | /bin/sh
 
 ######### Only This 2 lines to edit with new version ######
-version='1.4'
+version='1.5'
 changelog='\nFix little bugs\nUpdated Picons List'
 ##############################################################
 
@@ -80,10 +80,6 @@ fi
    wget https://github.com/ciefp/CiefpsettingsMotor/archive/refs/heads/main.tar.gz
    tar -xzf main.tar.gz
    cp -r 'CiefpsettingsMotor-main/usr' '/'
-if [ ! -f /etc/enigma2/CiefpsettingsMotor/user_config.ini ]; then
-	mkdir -p /etc/enigma2/CiefpsettingsMotor
-	cp -r ${PLUGINPATH}/user/user_config.ini /etc/enigma2/CiefpsettingsMotor/user_config.ini
-fi
 set +e
 cd
 sleep 2
