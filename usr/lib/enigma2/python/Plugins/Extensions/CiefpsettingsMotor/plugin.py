@@ -8,9 +8,9 @@ from Components.Label import Label
 from Plugins.Plugin import PluginDescriptor
 
 PLUGIN_VERSION = "v1.2"
-PLUGIN_NAME = "ciefpsettings-enigma2"
+PLUGIN_NAME = "CiefpsettingsMotor"
 PLUGIN_DESC = "Download and install ciefpsettings motor from GitHub"
-PLUGIN_ICON = "/usr/lib/enigma2/python/Plugins/Extensions/ciefpsettings-enigma2/icon.png"
+PLUGIN_ICON = "/usr/lib/enigma2/python/Plugins/Extensions/CiefpsettingsMotor/icon.png"
 GITHUB_API_URL = "https://api.github.com/repos/ciefp/ciefpsettings-enigma2/contents/ciefp-E2-motor-75E-34W"
 RAW_BASE_URL = "https://raw.githubusercontent.com/ciefp/ciefpsettings-enigma2/master/ciefp-E2-motor-75E-34W/"
 TUXBOX_PATH = "/etc/tuxbox"
