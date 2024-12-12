@@ -7,7 +7,7 @@ from Components.ActionMap import ActionMap
 from Components.Label import Label
 from Plugins.Plugin import PluginDescriptor
 
-PLUGIN_VERSION = "v1.2"
+PLUGIN_VERSION = "v1.5"
 PLUGIN_NAME = "CiefpsettingsMotor"
 PLUGIN_DESC = "Download and install ciefpsettings motor from GitHub"
 PLUGIN_ICON = "/usr/lib/enigma2/python/Plugins/Extensions/CiefpsettingsMotor/icon.png"
