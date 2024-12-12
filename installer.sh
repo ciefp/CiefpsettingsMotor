@@ -1,111 +1,79 @@
 #!/bin/bash
-##setup command=wget -q "--no-check-certificate" https://raw.githubusercontent.com/ciefp/CiefpsettingsMotor/main/installer.sh -O - | /bin/sh
+# setup command=wget -q "--no-check-certificate" https://raw.githubusercontent.com/ciefp/CiefpsettingsMotor/main/installer.sh -O - | /bin/sh
 
-######### Only This 2 lines to edit with new version ######
-version='1.2'
-changelog='\nFix little bugs\nUpdated Picons List'
-##############################################################
+VERSION='1.2'
+CHANGELOG='\nFix little bugs\nUpdated Picons List'
 
-TMPPATH=/tmp/CiefpsettingsMotor
+PLUGIN_URL="https://github.com/ciefp/CiefpsettingsMotor/archive/refs/heads/main.tar.gz"
+TMPPATH="/tmp/CiefpsettingsMotor"
+PLUGINPATH="/usr/lib/enigma2/python/Plugins/Extensions/CiefpsettingsMotor"
 
-if [ ! -d /usr/lib64 ]; then
-	PLUGINPATH=/usr/lib/enigma2/python/Plugins/Extensions/CiefpsettingsMotor
+if [ -d /usr/lib64 ]; then
+    PLUGINPATH="/usr/lib64/enigma2/python/Plugins/Extensions/CiefpsettingsMotor"
+fi
+
+echo "Detecting Python version..."
+if python3 --version &>/dev/null; then
+    echo "You have Python3 image"
+    PYTHON="PY3"
+    Packagerequests="python3-requests"
+    Packagesix="python3-six"
 else
-	PLUGINPATH=/usr/lib64/enigma2/python/Plugins/Extensions/CiefpsettingsMotor
+    echo "You have Python2 image"
+    PYTHON="PY2"
+    Packagerequests="python-requests"
 fi
 
-# check depends packges
-if [ -f /var/lib/dpkg/status ]; then
-   STATUS=/var/lib/dpkg/status
-   OSTYPE=DreamOs
+echo "Checking dependencies..."
+if grep -qs "Package: $Packagesix" /var/lib/dpkg/status || grep -qs "Package: $Packagesix" /var/lib/opkg/status; then
+    echo "Dependency $Packagesix found."
 else
-   STATUS=/var/lib/opkg/status
-   OSTYPE=Dream
+    echo "Installing $Packagesix..."
+    opkg update && opkg install $Packagesix
 fi
-echo ""
-if python --version 2>&1 | grep -q '^Python 3\.'; then
-	echo "You have Python3 image"
-	PYTHON=PY3
-	Packagesix=python3-six
-	Packagerequests=python3-requests
+
+if grep -qs "Package: $Packagerequests" /var/lib/dpkg/status || grep -qs "Package: $Packagerequests" /var/lib/opkg/status; then
+    echo "Dependency $Packagerequests found."
 else
-	echo "You have Python2 image"
-	PYTHON=PY2
-	Packagerequests=python-requests
+    echo "Installing $Packagerequests..."
+    opkg update && opkg install $Packagerequests
 fi
 
-if [ $PYTHON = "PY3" ]; then
-	if grep -qs "Package: $Packagesix" cat $STATUS ; then
-		echo ""
-	else
-		opkg update && opkg install python3-six
-	fi
-fi
-echo ""
-if grep -qs "Package: $Packagerequests" cat $STATUS ; then
-	echo ""
-else
-	echo "Need to install $Packagerequests"
-	echo ""
-	if [ $OSTYPE = "DreamOs" ]; then
-		apt-get update && apt-get install python-requests -y
-	elif [ $PYTHON = "PY3" ]; then
-		opkg update && opkg install python3-requests
-	elif [ $PYTHON = "PY2" ]; then
-		opkg update && opkg install python-requests
-	fi
-fi
-echo ""
+echo "Preparing installation..."
+[ -d "$TMPPATH" ] && rm -rf "$TMPPATH"
+mkdir -p "$TMPPATH"
 
-## Remove tmp directory
-[ -r $TMPPATH ] && rm -f $TMPPATH > /dev/null 2>&1
-
-## Remove old plugin directory
-[ -r $PLUGINPATH ] && rm -rf $PLUGINPATH
-
-# Download and install plugin
-# check depends packges
-mkdir -p $TMPPATH
-cd $TMPPATH
-set -e
-if [ -f /var/lib/dpkg/status ]; then
-   echo "# Your image is OE2.5/2.6 #"
-   echo ""
-   echo ""
-else
-   echo "# Your image is OE2.0 #"
-   echo ""
-   echo ""
+echo "Downloading plugin..."
+cd "$TMPPATH"
+wget "$PLUGIN_URL" -O main.tar.gz
+if [ $? -ne 0 ]; then
+    echo "Error downloading plugin."
+    exit 1
 fi
-   wget https://github.com/ciefp/CiefpsettingsMotor/archive/refs/heads/main.tar.gz
-   tar -xzf main.tar.gz
-   cp -r 'ciefpsettingsMotor-main/usr' '/'
+
+echo "Extracting plugin..."
+tar -xzf main.tar.gz
+cp -r ciefpsettingsMotor-main/usr /
+
 if [ ! -f /etc/enigma2/CiefpsettingsMotor/user_config.ini ]; then
-	mkdir -p /etc/enigma2/CiefpsettingsMotor
-	cp -r ${PLUGINPATH}/user/user_config.ini /etc/enigma2/CiefpsettingsMotor/user_config.ini
-fi
-set +e
-cd
-sleep 2
-
-### Check if plugin installed correctly
-if [ ! -d $PLUGINPATH ]; then
-	echo "Some thing wrong .. Plugin not installed"
-	exit 1
+    mkdir -p /etc/enigma2/CiefpsettingsMotor
+    cp "${PLUGINPATH}/user/user_config.ini" /etc/enigma2/CiefpsettingsMotor/user_config.ini
 fi
 
-rm -rf $TMPPATH > /dev/null 2>&1
-sync
-echo ""
-echo ""
+echo "Cleaning up..."
+rm -rf "$TMPPATH"
+
+if [ ! -d "$PLUGINPATH" ]; then
+    echo "Error: Plugin installation failed!"
+    exit 1
+fi
+
 echo "#########################################################"
 echo "#    CiefpsettingsMotor INSTALLED SUCCESSFULLY          #"
 echo "#                 developed by Qu4k3                    #"
 echo "#                                                       #"
 echo "#                  https://Sat-Club.EU                  #"
 echo "#########################################################"
-echo "#           your Device will RESTART Now                #"
-echo "#########################################################"
-sleep 5
+echo "Restarting Enigma2..."
 killall -9 enigma2
 exit 0
