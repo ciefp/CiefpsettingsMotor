@@ -80,10 +80,6 @@ fi
    wget https://github.com/ciefp/CiefpsettingsMotor/archive/refs/heads/main.tar.gz
    tar -xzf main.tar.gz
    cp -r 'CiefpsettingsMotor-main/usr' '/'
-if [ ! -f /etc/enigma2/CiefpsettingsMotor/user_config.ini ]; then
-	mkdir -p /etc/enigma2/CiefpsettingsMotor
-	cp -r ${PLUGINPATH}/user/user_config.ini /etc/enigma2/CiefpsettingsMotor/user_config.ini
-fi
 set +e
 cd
 sleep 2
