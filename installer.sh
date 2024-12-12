@@ -1,79 +1,122 @@
 #!/bin/bash
-# setup command=wget -q "--no-check-certificate" https://raw.githubusercontent.com/ciefp/CiefpsettingsMotor/main/installer.sh -O - | /bin/sh
+##setup command=wget -q "--no-check-certificate" https://raw.githubusercontent.com/ciefp/CiefpsettingsMotor/main/installer.sh -O - | /bin/sh
 
-VERSION='1.2'
-CHANGELOG='\nFix little bugs\nUpdated Picons List'
+######### Only This 2 lines to edit with new version ######
+version='1.3'
+changelog='\nFix little bugs\nUpdated Picons List'
+##############################################################
 
-PLUGIN_URL="https://github.com/ciefp/CiefpsettingsMotor/archive/refs/heads/main.tar.gz"
-TMPPATH="/tmp/CiefpsettingsMotor"
-PLUGINPATH="/usr/lib/enigma2/python/Plugins/Extensions/CiefpsettingsMotor"
+TMPPATH=/tmp/CiefpsettingsMotor
 
-if [ -d /usr/lib64 ]; then
-    PLUGINPATH="/usr/lib64/enigma2/python/Plugins/Extensions/CiefpsettingsMotor"
+if [ ! -d /usr/lib64 ]; then
+    PLUGINPATH=/usr/lib/enigma2/python/Plugins/Extensions/CiefpsettingsMotor
+else
+    PLUGINPATH=/usr/lib64/enigma2/python/Plugins/Extensions/CiefpsettingsMotor
 fi
 
-echo "Detecting Python version..."
-if python3 --version &>/dev/null; then
+# check depends packages
+if [ -f /var/lib/dpkg/status ]; then
+   STATUS=/var/lib/dpkg/status
+   OSTYPE=DreamOs
+else
+   STATUS=/var/lib/opkg/status
+   OSTYPE=Dream
+fi
+echo ""
+if python --version 2>&1 | grep -q '^Python 3\.'; then
     echo "You have Python3 image"
-    PYTHON="PY3"
-    Packagerequests="python3-requests"
-    Packagesix="python3-six"
+    PYTHON=PY3
+    Packagesix=python3-six
+    Packagerequests=python3-requests
 else
     echo "You have Python2 image"
-    PYTHON="PY2"
-    Packagerequests="python-requests"
+    PYTHON=PY2
+    Packagerequests=python-requests
 fi
 
-echo "Checking dependencies..."
-if grep -qs "Package: $Packagesix" /var/lib/dpkg/status || grep -qs "Package: $Packagesix" /var/lib/opkg/status; then
-    echo "Dependency $Packagesix found."
-else
-    echo "Installing $Packagesix..."
-    opkg update && opkg install $Packagesix
+if [ $PYTHON = "PY3" ]; then
+    if grep -qs "Package: $Packagesix" $STATUS ; then
+        echo "Dependency python3-six found."
+    else
+        opkg update && opkg install python3-six
+    fi
 fi
-
-if grep -qs "Package: $Packagerequests" /var/lib/dpkg/status || grep -qs "Package: $Packagerequests" /var/lib/opkg/status; then
+echo ""
+if grep -qs "Package: $Packagerequests" $STATUS ; then
     echo "Dependency $Packagerequests found."
 else
-    echo "Installing $Packagerequests..."
-    opkg update && opkg install $Packagerequests
+    echo "Need to install $Packagerequests"
+    echo ""
+    if [ $OSTYPE = "DreamOs" ]; then
+        apt-get update && apt-get install python-requests -y
+    elif [ $PYTHON = "PY3" ]; then
+        opkg update && opkg install python3-requests
+    elif [ $PYTHON = "PY2" ]; then
+        opkg update && opkg install python-requests
+    fi
+fi
+echo ""
+
+## Remove tmp directory
+[ -d $TMPPATH ] && rm -rf $TMPPATH
+
+## Remove old plugin directory
+[ -d $PLUGINPATH ] && rm -rf $PLUGINPATH
+
+# Download and install plugin
+mkdir -p $TMPPATH
+cd $TMPPATH
+set -e
+if [ -f /var/lib/dpkg/status ]; then
+   echo "# Your image is OE2.5/2.6 #"
+   echo ""
+   echo ""
+else
+   echo "# Your image is OE2.0 #"
+   echo ""
+   echo ""
 fi
 
-echo "Preparing installation..."
-[ -d "$TMPPATH" ] && rm -rf "$TMPPATH"
-mkdir -p "$TMPPATH"
+# Download and extract
+wget https://github.com/ciefp/CiefpsettingsMotor/archive/refs/heads/main.tar.gz
+tar -xzf main.tar.gz
 
-echo "Downloading plugin..."
-cd "$TMPPATH"
-wget "$PLUGIN_URL" -O main.tar.gz
-if [ $? -ne 0 ]; then
-    echo "Error downloading plugin."
+# Verify directory exists before copying
+if [ -d "CiefpsettingsMotor-main/usr" ]; then
+    cp -r CiefpsettingsMotor-main/usr /
+else
+    echo "Error: Directory 'CiefpsettingsMotor-main/usr' does not exist."
     exit 1
 fi
 
-echo "Extracting plugin..."
-tar -xzf main.tar.gz
-cp -r ciefpsettingsMotor-main/usr /
-
+# Create configuration file if not exists
 if [ ! -f /etc/enigma2/CiefpsettingsMotor/user_config.ini ]; then
     mkdir -p /etc/enigma2/CiefpsettingsMotor
-    cp "${PLUGINPATH}/user/user_config.ini" /etc/enigma2/CiefpsettingsMotor/user_config.ini
+    cp -r ${PLUGINPATH}/user/user_config.ini /etc/enigma2/CiefpsettingsMotor/user_config.ini
 fi
 
-echo "Cleaning up..."
-rm -rf "$TMPPATH"
+set +e
+cd
+sleep 2
 
-if [ ! -d "$PLUGINPATH" ]; then
-    echo "Error: Plugin installation failed!"
+### Check if plugin installed correctly
+if [ ! -d $PLUGINPATH ]; then
+    echo "Something went wrong... Plugin not installed"
     exit 1
 fi
 
+rm -rf $TMPPATH > /dev/null 2>&1
+sync
+echo ""
+echo ""
 echo "#########################################################"
 echo "#    CiefpsettingsMotor INSTALLED SUCCESSFULLY          #"
 echo "#                 developed by Qu4k3                    #"
 echo "#                                                       #"
 echo "#                  https://Sat-Club.EU                  #"
 echo "#########################################################"
-echo "Restarting Enigma2..."
+echo "#           your Device will RESTART Now                #"
+echo "#########################################################"
+sleep 5
 killall -9 enigma2
 exit 0
