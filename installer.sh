@@ -6,7 +6,7 @@ version='1.2'
 changelog='\nFix little bugs\nUpdated Picons List'
 ##############################################################
 
-TMPPATH=/tmp/ONEupdaterE2
+TMPPATH=/tmp/CiefpsettingsMotor
 
 if [ ! -d /usr/lib64 ]; then
 	PLUGINPATH=/usr/lib/enigma2/python/Plugins/Extensions/CiefpsettingsMotor
@@ -82,7 +82,7 @@ fi
    cp -r 'ciefpsettingsMotor-main/usr' '/'
 if [ ! -f /etc/enigma2/CiefpsettingsMotor/user_config.ini ]; then
 	mkdir -p /etc/enigma2/CiefpsettingsMotor
-	cp -r ${PLUGINPATH}/user/user_config.ini /etc/enigma2/ciefpsettingsMotor/user_config.ini
+	cp -r ${PLUGINPATH}/user/user_config.ini /etc/enigma2/CiefpsettingsMotor/user_config.ini
 fi
 set +e
 cd
