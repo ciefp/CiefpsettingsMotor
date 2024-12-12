@@ -1,4 +1,15 @@
 #!/bin/bash
+# Provera da li se skripta pokreće iz preusmerenja
+if [ ! -t 0 ]; then
+    TMPFILE=$(mktemp /tmp/installer.XXXXXX)
+    cat > "$TMPFILE" <&0
+    bash "$TMPFILE"
+    rm -f "$TMPFILE"
+    exit 0
+fi
+
+# Nastavak originalne skripte ovde
+
 ##setup command=wget -q "--no-check-certificate" https://raw.githubusercontent.com/ciefp/CiefpsettingsMotor/main/installer.sh -O - | /bin/sh
 
 ######### Only This 2 lines to edit with new version ######
