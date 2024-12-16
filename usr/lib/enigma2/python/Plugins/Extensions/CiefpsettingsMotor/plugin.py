@@ -7,7 +7,7 @@ from Components.ActionMap import ActionMap
 from Components.Label import Label
 from Plugins.Plugin import PluginDescriptor
 
-PLUGIN_VERSION = "v1.5"
+PLUGIN_VERSION = "v1.6"
 PLUGIN_NAME = "CiefpsettingsMotor"
 PLUGIN_DESC = "Download and install ciefpsettings motor from GitHub"
 PLUGIN_ICON = "/usr/lib/enigma2/python/Plugins/Extensions/CiefpsettingsMotor/icon.png"
@@ -17,12 +17,14 @@ TUXBOX_PATH = "/etc/tuxbox"
 ENIGMA2_PATH = "/etc/enigma2"
 LOG_PATH = "/tmp/ciefpsettings.log"
 
+# Log helper
 def log(message):
     """Write log messages to a file."""
     with open(LOG_PATH, "a") as log_file:
         log_file.write(f"{message}\n")
     print(message)
 
+# File download helper
 def download_file(url, destination, retries=3):
     """Download a file from a URL to the specified destination."""
     for attempt in range(retries):
@@ -38,6 +40,7 @@ def download_file(url, destination, retries=3):
             log(f"Error downloading {url} (Attempt {attempt + 1}): {e}")
     log(f"Failed to download {url} after {retries} attempts.")
 
+# Reload settings dynamically
 def reload_enigma2_settings():
     """Trigger Enigma2 to reload settings dynamically."""
     try:
@@ -47,6 +50,7 @@ def reload_enigma2_settings():
     except Exception as e:
         log(f"Error reloading Enigma2 settings: {e}")
 
+# Installation process
 def install_settings():
     """Download and install settings files."""
     try:
@@ -88,15 +92,20 @@ def install_settings():
     except Exception as e:
         log(f"Unexpected error: {e}")
 
+# Screen class with logo
+from Components.Pixmap import Pixmap  # Dodajemo import za Pixmap
+
 class CiefpSettingsScreen(Screen):
     skin = """
-    <screen name="CiefpSettingsScreen" position="center,center" size="600,400" title="Ciefp Settings Enigma2">
-        <widget name="status" position="20,20" size="560,320" font="Regular;20" halign="center" valign="center"/>
-        <widget name="actions" position="20,360" size="560,40" font="Regular;20" halign="center" valign="center"/>
+    <screen name="CiefpSettingsScreen" position="center,center" size="900,540" title="Ciefp Settings Motor">
+        <widget name="logo" position="10,10" size="900,400" transparent="1" alphatest="on" />
+        <widget name="status" position="10,460" size="880,60" font="Regular;26" halign="center" valign="center" />
     </screen>"""
 
     def __init__(self, session):
         Screen.__init__(self, session)
+        # Koristimo Pixmap za logotip
+        self["logo"] = Pixmap()
         self["status"] = Label("Ready to install settings press OK on your remote then wait ...")
         self["actions"] = ActionMap(
             ["OkCancelActions"],
@@ -107,6 +116,14 @@ class CiefpSettingsScreen(Screen):
         )
         self.timer = eTimer()
         self.timer.callback.append(self.auto_close)
+
+        # Postavljamo logotip nakon inicijalizacije
+        self.onLayoutFinish.append(self.set_logo)
+
+    def set_logo(self):
+        logo_path = "/usr/lib/enigma2/python/Plugins/Extensions/CiefpsettingsMotor/logo.png"
+        if os.path.exists(logo_path):
+            self["logo"].instance.setPixmapFromFile(logo_path)  # Prikazujemo sliku ako postoji
 
     def download_and_install(self):
         self["status"].setText("Downloading and installing settings...")
@@ -120,6 +137,9 @@ class CiefpSettingsScreen(Screen):
     def auto_close(self):
         self.close()
 
+
+
+# Plugin entry points
 def main(session, **kwargs):
     session.open(CiefpSettingsScreen)
 
