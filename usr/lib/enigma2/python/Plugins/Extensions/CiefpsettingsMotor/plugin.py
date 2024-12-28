@@ -1,145 +1,151 @@
 import os
+import shutil
+import zipfile
 import requests
-from urllib.parse import urljoin
 from enigma import eTimer, eDVBDB
 from Screens.Screen import Screen
-from Components.ActionMap import ActionMap
+from urllib.parse import urljoin
+from datetime import datetime
 from Components.Label import Label
+from Components.Pixmap import Pixmap
+from Components.ActionMap import ActionMap
 from Plugins.Plugin import PluginDescriptor
+from Screens.MessageBox import MessageBox
+from Components.MenuList import MenuList
 
-PLUGIN_VERSION = "v1.6"
+PLUGIN_VERSION = "v1.7"
 PLUGIN_NAME = "CiefpsettingsMotor"
-PLUGIN_DESC = "Download and install ciefpsettings motor from GitHub"
+PLUGIN_DESC = "Download, unzip and install ciefpsettings motor from GitHub"
 PLUGIN_ICON = "/usr/lib/enigma2/python/Plugins/Extensions/CiefpsettingsMotor/icon.png"
-GITHUB_API_URL = "https://api.github.com/repos/ciefp/ciefpsettings-enigma2/contents/ciefp-E2-motor-75E-34W"
-RAW_BASE_URL = "https://raw.githubusercontent.com/ciefp/ciefpsettings-enigma2/master/ciefp-E2-motor-75E-34W/"
-TUXBOX_PATH = "/etc/tuxbox"
-ENIGMA2_PATH = "/etc/enigma2"
-LOG_PATH = "/tmp/ciefpsettings.log"
+PLUGIN_LOGO = "/usr/lib/enigma2/python/Plugins/Extensions/CiefpsettingsMotor/logo.png"
 
-# Log helper
-def log(message):
-    """Write log messages to a file."""
-    with open(LOG_PATH, "a") as log_file:
-        log_file.write(f"{message}\n")
-    print(message)
-
-# File download helper
-def download_file(url, destination, retries=3):
-    """Download a file from a URL to the specified destination."""
-    for attempt in range(retries):
-        try:
-            log(f"Downloading {url} to {destination} (Attempt {attempt + 1}/{retries})")
-            response = requests.get(url, stream=True)
-            response.raise_for_status()
-            with open(destination, 'wb') as out_file:
-                out_file.write(response.content)
-            log(f"Successfully downloaded {url}")
-            return
-        except requests.exceptions.RequestException as e:
-            log(f"Error downloading {url} (Attempt {attempt + 1}): {e}")
-    log(f"Failed to download {url} after {retries} attempts.")
-
-# Reload settings dynamically
-def reload_enigma2_settings():
-    """Trigger Enigma2 to reload settings dynamically."""
-    try:
-        eDVBDB.getInstance().reloadBouquets()
-        eDVBDB.getInstance().reloadServicelist()
-        log("Enigma2 settings reloaded successfully.")
-    except Exception as e:
-        log(f"Error reloading Enigma2 settings: {e}")
-
-# Installation process
-def install_settings():
-    """Download and install settings files."""
-    try:
-        # Create target directories if they don't exist
-        os.makedirs(TUXBOX_PATH, exist_ok=True)
-        os.makedirs(ENIGMA2_PATH, exist_ok=True)
-
-        # Fetch file list from GitHub
-        log("Fetching file list from GitHub...")
-        response = requests.get(GITHUB_API_URL)
-        response.raise_for_status()
-        files = response.json()
-
-        # Process each file
-        for file in files:
-            if "name" not in file:
-                log(f"Skipping entry without a name: {file}")
-                continue
-            file_name = file["name"]
-            file_url = urljoin(RAW_BASE_URL, file_name)
-            log(f"Detected file: {file_name}")
-
-            if file_name == "satellites.xml":
-                # Place satellites.xml in /etc/tuxbox
-                destination = os.path.join(TUXBOX_PATH, file_name)
-                download_file(file_url, destination)
-            elif file_name.endswith((".tv", ".radio", "lamedb")):
-                # Place .tv, .radio, and lamedb files in /etc/enigma2
-                destination = os.path.join(ENIGMA2_PATH, file_name)
-                download_file(file_url, destination)
-            else:
-                log(f"Skipping unsupported file type: {file_name}")
-
-        # Reload Enigma2 settings dynamically
-        reload_enigma2_settings()
-
-    except requests.exceptions.RequestException as e:
-        log(f"Error fetching file list from GitHub: {e}")
-    except Exception as e:
-        log(f"Unexpected error: {e}")
-
-# Screen class with logo
-from Components.Pixmap import Pixmap  # Dodajemo import za Pixmap
+GITHUB_API_URL = "https://api.github.com/repos/ciefp/ciefpsettings-enigma2-zipped/contents/"
+STATIC_NAMES = ["ciefp-E2-75E-34W"]
 
 class CiefpSettingsScreen(Screen):
     skin = """
-    <screen name="CiefpSettingsScreen" position="center,center" size="900,540" title="Ciefp Settings Motor">
-        <widget name="logo" position="10,10" size="900,400" transparent="1" alphatest="on" />
-        <widget name="status" position="10,460" size="880,60" font="Regular;26" halign="center" valign="center" />
+    <screen name="CiefpSettingsScreen" position="center,center" size="900,600" title="Ciefp Settings Motor">
+        <widget name="logo" position="10,10" size="900,450" transparent="1" alphatest="on" />
+        <widget name="menu" position="10,440" size="880,30" scrollbarMode="showOnDemand" />
+        <widget name="status" position="10,480" size="880,60" font="Regular;26" halign="center" valign="center" />
     </screen>"""
 
     def __init__(self, session):
         Screen.__init__(self, session)
-        # Koristimo Pixmap za logotip
         self["logo"] = Pixmap()
-        self["status"] = Label("Ready to install settings press OK on your remote then wait ...")
+        self["menu"] = MenuList([])
+        self["status"] = Label("Ready to install settings. Press OK on your remote and wait...")
         self["actions"] = ActionMap(
             ["OkCancelActions"],
             {
-                "ok": self.download_and_install,
+                "ok": self.ok_pressed,
                 "cancel": self.close,
             },
         )
-        self.timer = eTimer()
-        self.timer.callback.append(self.auto_close)
-
-        # Postavljamo logotip nakon inicijalizacije
+        self.available_files = {}
         self.onLayoutFinish.append(self.set_logo)
+        self.onLayoutFinish.append(self.fetch_file_list)
 
     def set_logo(self):
-        logo_path = "/usr/lib/enigma2/python/Plugins/Extensions/CiefpsettingsMotor/logo.png"
+        """Set the plugin logo."""
+        logo_path = PLUGIN_LOGO
         if os.path.exists(logo_path):
-            self["logo"].instance.setPixmapFromFile(logo_path)  # Prikazujemo sliku ako postoji
+            self["logo"].instance.setPixmapFromFile(logo_path)
+        else:
+            self["status"].setText("Logo file not found.")
 
-    def download_and_install(self):
-        self["status"].setText("Downloading and installing settings...")
+    def fetch_file_list(self):
+        """Fetch available lists from GitHub."""
         try:
-            install_settings()
-            self["status"].setText("Installation completed! Settings reloaded.")
+            self["status"].setText("Fetching available lists from GitHub...")
+            response = requests.get(GITHUB_API_URL, timeout=10)
+            if response.status_code != 200:
+                self["status"].setText("Failed to fetch file list from GitHub.")
+                return
+
+            files = response.json()
+            for file in files:
+                file_name = file.get("name", "")
+                for static_name in STATIC_NAMES:
+                    if file_name.startswith(static_name):
+                        self.available_files[static_name] = file_name
+
+            sorted_files = sorted(self.available_files.keys(), key=lambda x: STATIC_NAMES.index(x))
+            if sorted_files:
+                self["menu"].setList(sorted_files)
+                self["status"].setText("Select a channel list to download.")
+            else:
+                self["status"].setText("No valid lists found on GitHub.")
+        except requests.exceptions.RequestException as e:
+            self["status"].setText(f"Network error: {str(e)}")
         except Exception as e:
-            self["status"].setText(f"Error: {e}")
-        self.timer.start(5000, True)
+            self["status"].setText(f"Error processing lists: {str(e)}")
 
-    def auto_close(self):
-        self.close()
+    def ok_pressed(self):
+        """Called when OK is pressed."""
+        selected_item = self["menu"].getCurrent()
+        if selected_item:
+            self.download_and_install(selected_item)
 
+    def download_and_install(self, selected_item):
+        """Download and install the selected list."""
+        file_name = self.available_files.get(selected_item)
+        if not file_name:
+            self["status"].setText(f"Error: No file found for {selected_item}.")
+            return
 
+        url = f"https://github.com/ciefp/ciefpsettings-enigma2-zipped/raw/refs/heads/master/{file_name}"
+        download_path = f"/tmp/{file_name}"
+        extract_path = f"/tmp/{selected_item}"
 
-# Plugin entry points
+        try:
+            self["status"].setText(f"Downloading {file_name}...")
+            response = requests.get(url, stream=True, timeout=15)
+            response.raise_for_status()
+
+            with open(download_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=1024):
+                    f.write(chunk)
+
+            self["status"].setText(f"Extracting {file_name}...")
+            with zipfile.ZipFile(download_path, "r") as zip_ref:
+                zip_ref.extractall(extract_path)
+
+            self.copy_files(extract_path)
+            self.reload_settings()
+            self["status"].setText(f"{selected_item} installed successfully!")
+        except requests.exceptions.RequestException as e:
+            self["status"].setText(f"Download error: {str(e)}")
+        except Exception as e:
+            self["status"].setText(f"Installation error: {str(e)}")
+        finally:
+            if os.path.exists(download_path):
+                os.remove(download_path)
+            if os.path.exists(extract_path):
+                shutil.rmtree(extract_path)
+
+    def copy_files(self, path):
+        """Copy files to appropriate directories."""
+        dest_enigma2 = "/etc/enigma2/"
+        dest_tuxbox = "/etc/tuxbox/"
+
+        for root, dirs, files in os.walk(path):
+            for file in files:
+                source_file = os.path.join(root, file)
+                if file == "satellites.xml":
+                    shutil.move(source_file, os.path.join(dest_tuxbox, file))
+                elif file.endswith(".tv") or file.endswith(".radio") or file == "lamedb":
+                    shutil.move(source_file, os.path.join(dest_enigma2, file))
+
+    def reload_settings(self):
+        """Reload Enigma2 settings."""
+        try:
+            eDVBDB.getInstance().reloadServicelist()
+            eDVBDB.getInstance().reloadBouquets()
+            self.session.open(MessageBox, "Reload successful! New settings are now active.  ..::ciefpsettings::..", MessageBox.TYPE_INFO, timeout=5)
+        except Exception as e:
+            self.session.open(MessageBox, f"Reload failed: {str(e)}", MessageBox.TYPE_ERROR, timeout=5)
+
 def main(session, **kwargs):
     session.open(CiefpSettingsScreen)
 
@@ -150,6 +156,6 @@ def Plugins(**kwargs):
             description=f"{PLUGIN_DESC} ({PLUGIN_VERSION})",
             where=PluginDescriptor.WHERE_PLUGINMENU,
             icon=PLUGIN_ICON,
-            fnc=main,
+            fnc=main
         )
     ]
