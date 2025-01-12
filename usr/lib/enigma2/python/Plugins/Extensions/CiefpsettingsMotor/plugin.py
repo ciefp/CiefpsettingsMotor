@@ -13,7 +13,7 @@ from Plugins.Plugin import PluginDescriptor
 from Screens.MessageBox import MessageBox
 from Components.MenuList import MenuList
 
-PLUGIN_VERSION = "v1.7"
+PLUGIN_VERSION = "v1.8"
 PLUGIN_NAME = "CiefpsettingsMotor"
 PLUGIN_DESC = "Download, unzip and install ciefpsettings motor from GitHub"
 PLUGIN_ICON = "/usr/lib/enigma2/python/Plugins/Extensions/CiefpsettingsMotor/icon.png"
@@ -24,10 +24,10 @@ STATIC_NAMES = ["ciefp-E2-75E-34W"]
 
 class CiefpSettingsScreen(Screen):
     skin = """
-    <screen name="CiefpSettingsScreen" position="center,center" size="900,600" title="Ciefp Settings Motor">
-        <widget name="logo" position="10,10" size="900,450" transparent="1" alphatest="on" />
-        <widget name="menu" position="10,440" size="880,30" scrollbarMode="showOnDemand" />
-        <widget name="status" position="10,480" size="880,60" font="Regular;26" halign="center" valign="center" />
+    <screen name="CiefpSettingsScreen" position="center,center" size="1200,600" title="Ciefp Settings Motor">
+        <widget name="logo" position="10,10" size="1200,500" transparent="1" alphatest="on" />
+        <widget name="menu" position="10,440" size="1200,30" scrollbarMode="showOnDemand" />
+        <widget name="status" position="10,480" size="1200,60" font="Regular;26" halign="center" valign="center" />
     </screen>"""
 
     def __init__(self, session):
