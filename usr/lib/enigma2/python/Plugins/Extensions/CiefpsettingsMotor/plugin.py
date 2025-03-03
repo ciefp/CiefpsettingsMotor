@@ -14,13 +14,12 @@ from Plugins.Plugin import PluginDescriptor
 from Screens.MessageBox import MessageBox
 from Components.MenuList import MenuList
 
-# Kompatibilnost za Python 2 i Python 3
 try:
-    from urllib import parse as urlparse  # Python 3
+    from urllib import parse as urlparse
 except ImportError:
-    import urlparse  # Python 2
+    import urlparse
 
-PLUGIN_VERSION = "v2.0"
+PLUGIN_VERSION = "v2.1"
 PLUGIN_NAME = "CiefpsettingsMotor"
 PLUGIN_DESC = "Download, unzip and install ciefpsettings motor from GitHub"
 PLUGIN_ICON = "/usr/lib/enigma2/python/Plugins/Extensions/CiefpsettingsMotor/icon.png"
@@ -47,7 +46,7 @@ class CiefpSettingsScreen(Screen):
         self["logo"] = Pixmap()
         self["menu"] = MenuList([])
         self["status"] = Label("Ready to install settings. Press OK on your remote and wait...")
-        self["version_info"] = Label("")  # New label for version info
+        self["version_info"] = Label("")
         self["actions"] = ActionMap(
             ["OkCancelActions"],
             {
@@ -56,9 +55,10 @@ class CiefpSettingsScreen(Screen):
             },
         )
         self.available_files = {}
+        self.existing_user_bouquets = set()
         self.onLayoutFinish.append(self.set_logo)
-        self.onLayoutFinish.append(self.fetch_file_list_and_show_version)  # Fetch file list and show version info
-        
+        self.onLayoutFinish.append(self.fetch_file_list_and_show_version)
+
     def set_logo(self):
         logo_path = PLUGIN_LOGO
         if os.path.exists(logo_path):
@@ -71,10 +71,6 @@ class CiefpSettingsScreen(Screen):
             self["status"].setText("Fetching available lists from GitHub...")
             response = requests.get(GITHUB_API_URL, timeout=10)
             response.raise_for_status()
-
-            # Debug: Print the raw response content
-            print(response.json())
-
             files = response.json()
 
             found_version = None
@@ -84,13 +80,12 @@ class CiefpSettingsScreen(Screen):
                     for static_name in STATIC_NAMES:
                         if file_name.startswith(static_name):
                             self.available_files[static_name] = file_name
-                            found_version = file_name  # Store the version string
+                            found_version = file_name
 
             sorted_files = sorted(self.available_files.keys(), key=lambda x: STATIC_NAMES.index(x))
             if sorted_files:
                 self["menu"].setList(sorted_files)
                 self["status"].setText("Select a channel list to download.")
-
                 if found_version:
                     self["version_info"].setText(f"Available version {found_version}")
             else:
@@ -117,6 +112,7 @@ class CiefpSettingsScreen(Screen):
         download_path = "/tmp/" + file_name
         extract_path = "/tmp/" + selected_item
         try:
+            self.identify_existing_user_bouquets()
             self["status"].setText("Downloading {0}...".format(file_name))
             response = requests.get(url, stream=True, timeout=15)
             response.raise_for_status()
@@ -139,17 +135,71 @@ class CiefpSettingsScreen(Screen):
             if os.path.exists(extract_path):
                 shutil.rmtree(extract_path)
 
+    def identify_existing_user_bouquets(self):
+        dest_enigma2 = "/etc/enigma2/"
+        prefixes = ("userbouquet.buket", "userbouquet.ciefp", "userbouquet.ciefpsettings", 
+                    "userbouquet.link", "userbouquet.marker")
+        if os.path.exists(dest_enigma2):
+            for file in os.listdir(dest_enigma2):
+                if (file.endswith(".tv") or file.endswith(".radio")) and not any(file.startswith(prefix) for prefix in prefixes):
+                    self.existing_user_bouquets.add(file)
+        print(f"[DEBUG] Existing user bouquets: {self.existing_user_bouquets}")
+
     def copy_files(self, path):
         dest_enigma2 = "/etc/enigma2/"
         dest_tuxbox = "/etc/tuxbox/"
+        new_bouquets = []
+
         for root, dirs, files in os.walk(path):
             for file in files:
                 source_file = os.path.join(root, file)
                 if file == "satellites.xml":
                     shutil.move(source_file, os.path.join(dest_tuxbox, file))
-                elif file.endswith(".tv") or file.endswith(".radio") or file == "lamedb":
+                elif file == "lamedb":
                     shutil.move(source_file, os.path.join(dest_enigma2, file))
-           
+                elif file == "bouquets.tv":
+                    new_bouquets_path = source_file
+                elif file.endswith(".tv") or file.endswith(".radio"):
+                    dest_path = os.path.join(dest_enigma2, file)
+                    shutil.move(source_file, dest_path)
+                    new_bouquets.append(file)
+
+        if new_bouquets:
+            self.update_bouquets_tv(dest_enigma2, new_bouquets_path, new_bouquets)
+
+    def update_bouquets_tv(self, dest_enigma2, new_bouquets_path, new_bouquets):
+        existing_bouquets_path = os.path.join(dest_enigma2, "bouquets.tv")
+        temp_bouquets_path = os.path.join(dest_enigma2, "bouquets.tv.tmp")
+
+        existing_lines = []
+        if os.path.exists(existing_bouquets_path):
+            with open(existing_bouquets_path, 'r') as f:
+                existing_lines = f.readlines()
+
+        new_lines = []
+        if os.path.exists(new_bouquets_path):
+            with open(new_bouquets_path, 'r') as f:
+                new_lines = f.readlines()
+
+        updated_lines = []
+        for line in new_lines:
+            if "FROM BOUQUET" in line:
+                bouquet_file = line.split('"')[1]
+                if bouquet_file in new_bouquets:
+                    updated_lines.append(line)
+            else:
+                updated_lines.append(line)
+
+        for line in existing_lines:
+            if "FROM BOUQUET" in line:
+                bouquet_file = line.split('"')[1]
+                if bouquet_file in self.existing_user_bouquets and not any(bouquet_file in existing_line for existing_line in updated_lines):
+                    updated_lines.append(line)
+
+        with open(temp_bouquets_path, 'w') as f:
+            updated_lines = [line if line.endswith('\n') else line + '\n' for line in updated_lines]
+            f.writelines(updated_lines)
+        shutil.move(temp_bouquets_path, existing_bouquets_path)
 
     def reload_settings(self):
         try:
