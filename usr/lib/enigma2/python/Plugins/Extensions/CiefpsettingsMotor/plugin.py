@@ -14,13 +14,14 @@ from Plugins.Plugin import PluginDescriptor
 from Screens.MessageBox import MessageBox
 from Components.MenuList import MenuList
 
+# Handle urllib.parse for Python 2 and 3
 try:
     from urllib import parse as urlparse
 except ImportError:
     import urlparse
 
-PLUGIN_VERSION = "v2.1"
-PLUGIN_NAME = "CiefpsettingsMotor"
+PLUGIN_VERSION = "v2.2"
+PLUGIN_NAME = "CiefpSettingsMotor"
 PLUGIN_DESC = "Download, unzip and install ciefpsettings motor from GitHub"
 PLUGIN_ICON = "/usr/lib/enigma2/python/Plugins/Extensions/CiefpsettingsMotor/icon.png"
 PLUGIN_LOGO = "/usr/lib/enigma2/python/Plugins/Extensions/CiefpsettingsMotor/logo.png"
@@ -28,6 +29,7 @@ GITHUB_API_URL = "https://api.github.com/repos/ciefp/ciefpsettings-enigma2-zippe
 STATIC_NAMES = ["ciefp-E2-75E-34W"]
 
 def to_unicode(s):
+    """Convert string to unicode for Python 2, return as-is for Python 3."""
     if sys.version_info[0] < 3:
         return s.decode('utf-8') if isinstance(s, str) else s
     return s
@@ -52,7 +54,7 @@ class CiefpSettingsScreen(Screen):
             {
                 "ok": self.ok_pressed,
                 "cancel": self.close,
-            },
+            }
         )
         self.available_files = {}
         self.existing_user_bouquets = set()
@@ -87,15 +89,15 @@ class CiefpSettingsScreen(Screen):
                 self["menu"].setList(sorted_files)
                 self["status"].setText("Select a channel list to download.")
                 if found_version:
-                    self["version_info"].setText(f"Available version {found_version}")
+                    self["version_info"].setText("Available version {}".format(found_version))
             else:
                 self["status"].setText("No valid lists found on GitHub.")
                 self["version_info"].setText("No available version found")
         except requests.exceptions.RequestException as e:
-            self["status"].setText("Network error: " + to_unicode(str(e)))
+            self["status"].setText("Network error: {}".format(to_unicode(str(e))))
             self["version_info"].setText("Error fetching version information")
         except Exception as e:
-            self["status"].setText("Error processing lists: " + to_unicode(str(e)))
+            self["status"].setText("Error processing lists: {}".format(to_unicode(str(e))))
             self["version_info"].setText("Error fetching version information")
 
     def ok_pressed(self):
@@ -106,29 +108,29 @@ class CiefpSettingsScreen(Screen):
     def download_and_install(self, selected_item):
         file_name = self.available_files.get(selected_item)
         if not file_name:
-            self["status"].setText("Error: No file found for {0}.".format(selected_item))
+            self["status"].setText("Error: No file found for {}.".format(selected_item))
             return
         url = "https://github.com/ciefp/ciefpsettings-enigma2-zipped/raw/refs/heads/master/" + file_name
         download_path = "/tmp/" + file_name
         extract_path = "/tmp/" + selected_item
         try:
             self.identify_existing_user_bouquets()
-            self["status"].setText("Downloading {0}...".format(file_name))
+            self["status"].setText("Downloading {}...".format(file_name))
             response = requests.get(url, stream=True, timeout=15)
             response.raise_for_status()
             with open(download_path, "wb") as f:
                 for chunk in response.iter_content(chunk_size=1024):
                     f.write(chunk)
-            self["status"].setText("Extracting {0}...".format(file_name))
+            self["status"].setText("Extracting {}...".format(file_name))
             with zipfile.ZipFile(download_path, "r") as zip_ref:
                 zip_ref.extractall(extract_path)
             self.copy_files(extract_path)
             self.reload_settings()
-            self["status"].setText("{0} installed successfully!".format(selected_item))
+            self["status"].setText("{} installed successfully!".format(selected_item))
         except requests.exceptions.RequestException as e:
-            self["status"].setText("Download error: " + to_unicode(str(e)))
+            self["status"].setText("Download error: {}".format(to_unicode(str(e))))
         except Exception as e:
-            self["status"].setText("Installation error: " + to_unicode(str(e)))
+            self["status"].setText("Installation error: {}".format(to_unicode(str(e))))
         finally:
             if os.path.exists(download_path):
                 os.remove(download_path)
@@ -143,7 +145,7 @@ class CiefpSettingsScreen(Screen):
             for file in os.listdir(dest_enigma2):
                 if (file.endswith(".tv") or file.endswith(".radio")) and not any(file.startswith(prefix) for prefix in prefixes):
                     self.existing_user_bouquets.add(file)
-        print(f"[DEBUG] Existing user bouquets: {self.existing_user_bouquets}")
+        print("[DEBUG] Existing user bouquets: {}".format(self.existing_user_bouquets))
 
     def copy_files(self, path):
         dest_enigma2 = "/etc/enigma2/"
@@ -207,7 +209,7 @@ class CiefpSettingsScreen(Screen):
             eDVBDB.getInstance().reloadBouquets()
             self.session.open(MessageBox, "Reload successful! New settings are now active.  ..::ciefpsettings::..", MessageBox.TYPE_INFO, timeout=5)
         except Exception as e:
-            self.session.open(MessageBox, "Reload failed: " + to_unicode(str(e)), MessageBox.TYPE_ERROR, timeout=5)
+            self.session.open(MessageBox, "Reload failed: {}".format(to_unicode(str(e))), MessageBox.TYPE_ERROR, timeout=5)
 
 def main(session, **kwargs):
     session.open(CiefpSettingsScreen)
@@ -216,7 +218,7 @@ def Plugins(**kwargs):
     return [
         PluginDescriptor(
             name=PLUGIN_NAME,
-            description="{0} ({1})".format(PLUGIN_DESC, PLUGIN_VERSION),
+            description="{} ({})".format(PLUGIN_DESC, PLUGIN_VERSION),
             where=PluginDescriptor.WHERE_PLUGINMENU,
             icon=PLUGIN_ICON,
             fnc=main
