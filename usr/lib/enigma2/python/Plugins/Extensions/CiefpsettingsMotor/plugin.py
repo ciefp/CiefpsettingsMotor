@@ -20,7 +20,7 @@ try:
 except ImportError:
     import urlparse
 
-PLUGIN_VERSION = "v2.2"
+PLUGIN_VERSION = "v2.3"
 PLUGIN_NAME = "CiefpSettingsMotor"
 PLUGIN_DESC = "Download, unzip and install ciefpsettings motor from GitHub"
 PLUGIN_ICON = "/usr/lib/enigma2/python/Plugins/Extensions/CiefpsettingsMotor/icon.png"
@@ -36,7 +36,7 @@ def to_unicode(s):
 
 class CiefpSettingsScreen(Screen):
     skin = """
-    <screen name="CiefpSettingsScreen" position="center,center" size="1200,600" title="Ciefp Settings Motor">
+    <screen name="CiefpSettingsScreen" position="center,center" size="1200,600" title="..:: Ciefp Settings Motor ::..">
         <widget name="logo" position="10,10" size="1200,480" transparent="1" alphatest="on" />
         <widget name="menu" position="10,480" size="1200,45" font="Regular;20" halign="center" valign="center" />
         <widget name="status" position="10,520" size="1200,60" font="Regular;26" halign="center" valign="center" />
