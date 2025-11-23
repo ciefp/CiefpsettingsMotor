@@ -1,7 +1,7 @@
 
 # CiefpSettingsMotor Plugin (v2.2)
 
-![Bouquet](https://github.com/ciefp/CiefpWhitelistStreamrelay/blob/main/whiteliststreamrelay.jpg)
+![Bouquet](https://github.com/ciefp/CiefSettingsMotor/blob/main/ciefpsettingsmotor.jpg)
 
 ### What does the plugin do?
 CiefpSettingsMotor is a simple tool that downloads, unpacks and installs the latest channel list for motorized satellite dishes
