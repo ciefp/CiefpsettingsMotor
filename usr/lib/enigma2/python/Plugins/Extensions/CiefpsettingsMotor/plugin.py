@@ -20,7 +20,7 @@ try:
 except ImportError:
     import urlparse
 
-PLUGIN_VERSION = "v2.3"
+PLUGIN_VERSION = "v2.4"
 PLUGIN_NAME = "CiefpSettingsMotor"
 PLUGIN_DESC = "Download, unzip and install ciefpsettings motor from GitHub"
 PLUGIN_ICON = "/usr/lib/enigma2/python/Plugins/Extensions/CiefpsettingsMotor/icon.png"
@@ -36,17 +36,21 @@ def to_unicode(s):
 
 class CiefpSettingsScreen(Screen):
     skin = """
-    <screen name="CiefpSettingsScreen" position="center,center" size="1200,600" title="..:: Ciefp Settings Motor ::..">
-        <widget name="logo" position="10,10" size="1200,480" transparent="1" alphatest="on" />
-        <widget name="menu" position="10,480" size="1200,45" font="Regular;20" halign="center" valign="center" />
-        <widget name="status" position="10,520" size="1200,60" font="Regular;26" halign="center" valign="center" />
-        <widget name="version_info" position="10,560" size="1200,40" font="Regular;20" halign="center" valign="center" />
+    <screen name="CiefpSettingsScreen" position="center,center" size="1920,10800" backgroundColor="#011a2e" >
+        <widget name="plugin_title" render="Label" position="0,20" size="1920,60" font="Regular;34" halign="center" valign="center" foregroundColor="#00FF00" title="..:: Ciefp Settings Motor ::.." backgroundColor="#050505" zPosition="3" />
+        <!-- Left Side Information Box Description -->
+        <widget name="description_box" position="40,90" size="850,800" font="Regular;26" foregroundColor="#FFFFFF" backgroundColor="#011a2e" transparent="1" valign="top" zPosition="1" />
+        <widget name="logo" position="900,90" size="1000,800" zPosition="1"  />
+        <widget name="menu" position="0,890" size="1920,50" itemHeight="50" font="Regular;26" halign="center" valign="center" />
+        <widget name="status" position="0,940" size="1920,60" font="Regular;26" halign="center" valign="center" backgroundColor="#050505" />
+        <widget name="version_info" position="0,1000" size="1920,40" font="Regular;26" halign="center" valign="center" backgroundColor="#050505" />
     </screen>"""
 
     def __init__(self, session):
         Screen.__init__(self, session)
         self["logo"] = Pixmap()
         self["menu"] = MenuList([])
+        self["plugin_title"] = Label("..:: CiefpsettingsMotor ::.. (v2.4)")
         self["status"] = Label("Ready to install settings. Press OK on your remote and wait...")
         self["version_info"] = Label("")
         self["actions"] = ActionMap(
@@ -60,6 +64,22 @@ class CiefpSettingsScreen(Screen):
         self.existing_user_bouquets = set()
         self.onLayoutFinish.append(self.set_logo)
         self.onLayoutFinish.append(self.fetch_file_list_and_show_version)
+
+        info_text = (
+            "..:: CiefpSettings Motor ::..\n\n"
+            " CiefpSettingsMotor is a simple tool that downloads, unpacks and installs the latest channel list  \n"
+            " for motorized satellite dishes directly from GitHub (ciefp-E2-75E-34W).  \n"
+            " This list includes satellite bouquets (eg 19.2E, 16.0E, 13.0E...), \n"
+            " thematic bouquets (sport, movies, music), IPTV channels and markers. \n"
+            " How is it used? \n"
+            " 1. Start the plugin from the Enigma2 receiver menu. \n"
+            " 2. Press OK on the remote control. \n"
+            " 3. Wait for the list to download and install — the process is automatic and only takes a few moments. \n"
+            " 4. After installation, the receiver will automatically refresh and the new list will be active. \n"
+            " • Simplicity: No complicated settings — everything works with one click.\n\n"
+            "..:: CiefpSettings ::.."
+        )
+        self["description_box"] = Label(info_text)
 
     def set_logo(self):
         logo_path = PLUGIN_LOGO
